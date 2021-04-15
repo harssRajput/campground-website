@@ -7,7 +7,8 @@ const methodOverride = require('method-override');
 const ejsMate = require('ejs-mate');
 const catchAsync = require('./utils/catchAsync');
 const expressError = require('./utils/expressError');
-const { campgroundSchema } = require('./schemas');
+const { campgroundSchema, reviewSchema } = require('./schemas');
+const Review = require('./models/review');
 
 
 // for connecting mongoose to mongodb
@@ -34,9 +35,19 @@ app.use(express.urlencoded({ extended: true }));
 // for overriding method in HTML Forms
 app.use(methodOverride('_method'));
 
-const validateSchema = (req, res, next) => {
-
+// error handling at server side if user bypass client-side errors by POSTMAN or anyway
+const validateCampground = (req, res, next) => {
     const { error } = campgroundSchema.validate(req.body)
+    if (error) {
+        const msg = error.details.map(el => el.message).join(',');
+        throw new expressError(msg, 400);
+    } else {
+        next();
+    }
+}
+
+const validateReview = (req, res, next) => {
+    const { error } = reviewSchema.validate(req.body)
     if (error) {
         const msg = error.details.map(el => el.message).join(',');
         throw new expressError(msg, 400);
@@ -50,7 +61,7 @@ app.get('/campgrounds/new', (req, res) => {
     res.render('campgrounds/new');
 })
 
-app.put('/campgrounds/:id', validateSchema, catchAsync(async (req, res) => {
+app.put('/campgrounds/:id', validateCampground, catchAsync(async (req, res) => {
     const { id } = req.params;
     const campground = await Campground.findByIdAndUpdate(id, { ...req.body.campground }, { useFindAndModify: false });
     res.redirect(`/campgrounds/${campground._id}`)
@@ -67,7 +78,7 @@ app.get('/campgrounds', catchAsync(async (req, res) => {
     res.render('campgrounds/index', { campgrounds: campgrounds })
 }))
 
-app.post('/campgrounds', validateSchema, catchAsync(async (req, res, next) => {
+app.post('/campgrounds', validateCampground, catchAsync(async (req, res, next) => {
     const campground = new Campground(req.body.campground);
     await campground.save();
     res.redirect(`/campgrounds/${campground._id}`)
@@ -75,7 +86,7 @@ app.post('/campgrounds', validateSchema, catchAsync(async (req, res, next) => {
 
 
 app.get('/campgrounds/:id', catchAsync(async (req, res) => {
-    const campground = await Campground.findById(req.params.id);
+    const campground = await Campground.findById(req.params.id).populate('reviews');
     res.render('campgrounds/show', { campground })
 }))
 
@@ -89,6 +100,22 @@ app.get('/', (req, res) => {
     res.render('index')
 })
 // campground CRUD functionality ends here
+
+app.post('/campgrounds/:id/reviews', validateReview, catchAsync(async (req, res) => {
+    const campground = await Campground.findById(req.params.id)
+    const review = new Review(req.body.review)
+    campground.reviews.push(review)
+    await campground.save()
+    await review.save()
+    res.redirect(`/campgrounds/${campground._id}`)
+}))
+
+app.delete('/campgrounds/:id/reviews/:reviewId', catchAsync(async (req, res) => {
+    const { id, reviewId } = req.params;
+    await Campground.findByIdAndUpdate(id, { $pull: { reviews: reviewId } }, {useFindAndModify: false})
+    await Review.findByIdAndDelete(reviewId, {useFindAndModify:false} );
+    res.redirect(`/campgrounds/${id}`)
+}))
 
 app.all('*', (req, res, next) => {
     // console.lod('inside undefined path handler')
