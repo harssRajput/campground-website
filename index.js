@@ -2,20 +2,26 @@ const express = require('express');
 const app = express();
 const path = require('path');
 const mongoose = require('mongoose');
-const Campground = require('./models/campground');
 const methodOverride = require('method-override');
 const ejsMate = require('ejs-mate');
-const catchAsync = require('./utils/catchAsync');
 const expressError = require('./utils/expressError');
-const { campgroundSchema, reviewSchema } = require('./schemas');
-const Review = require('./models/review');
+const session = require('express-session');
+const flash = require('connect-flash');
+const passport = require('passport');
+const localStrategy = require('passport-local');
+const User = require('./models/user');
+
+const campgroundsRoute = require('./routes/campgrounds');
+const reviewsRoute = require('./routes/reviews');
+const usersRoute = require('./routes/users');
 
 
 // for connecting mongoose to mongodb
 mongoose.connect('mongodb://localhost:27017/yelpCamp', {
     useNewUrlParser: true,
     useCreateIndex: true,
-    useUnifiedTopology: true
+    useUnifiedTopology: true,
+    useFindAndModify: false
 });
 
 const db = mongoose.connection;
@@ -34,88 +40,50 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(express.urlencoded({ extended: true }));
 // for overriding method in HTML Forms
 app.use(methodOverride('_method'));
+app.use(express.static(path.join(__dirname, 'public')));
 
-// error handling at server side if user bypass client-side errors by POSTMAN or anyway
-const validateCampground = (req, res, next) => {
-    const { error } = campgroundSchema.validate(req.body)
-    if (error) {
-        const msg = error.details.map(el => el.message).join(',');
-        throw new expressError(msg, 400);
-    } else {
-        next();
+const sessionConfig = {
+    secret: 'ThisIsNotAGoodSecret',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true,
+        expires: Date.now() + 1000 * 60 * 60 * 24 * 7,
+        maxAge: 1000 * 60 * 60 * 24 * 7
     }
 }
+app.use(session(sessionConfig))
 
-const validateReview = (req, res, next) => {
-    const { error } = reviewSchema.validate(req.body)
-    if (error) {
-        const msg = error.details.map(el => el.message).join(',');
-        throw new expressError(msg, 400);
-    } else {
-        next();
-    }
-}
+app.use(passport.initialize())
+app.use(passport.session())
+passport.use(new localStrategy(User.authenticate()));
 
-// campground CRUD routing start
-app.get('/campgrounds/new', (req, res) => {
-    res.render('campgrounds/new');
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
+app.use(flash());
+app.use((req, res, next) => {
+    res.locals.success = req.flash('success');
+    res.locals.error = req.flash('error');
+    res.locals.currentUser = req.user;
+    next();
 })
-
-app.put('/campgrounds/:id', validateCampground, catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const campground = await Campground.findByIdAndUpdate(id, { ...req.body.campground }, { useFindAndModify: false });
-    res.redirect(`/campgrounds/${campground._id}`)
-}))
-
-app.get('/campgrounds/:id/edit', catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const campground = await Campground.findById(id);
-    res.render('campgrounds/edit', { campground });
-}))
-
-app.get('/campgrounds', catchAsync(async (req, res) => {
-    const campgrounds = await Campground.find();
-    res.render('campgrounds/index', { campgrounds: campgrounds })
-}))
-
-app.post('/campgrounds', validateCampground, catchAsync(async (req, res, next) => {
-    const campground = new Campground(req.body.campground);
-    await campground.save();
-    res.redirect(`/campgrounds/${campground._id}`)
-}))
-
-
-app.get('/campgrounds/:id', catchAsync(async (req, res) => {
-    const campground = await Campground.findById(req.params.id).populate('reviews');
-    res.render('campgrounds/show', { campground })
-}))
-
-app.delete('/campgrounds/:id', catchAsync(async (req, res) => {
-    const { id } = req.params;
-    const checkIt = await Campground.findByIdAndDelete(id);
-    res.redirect('/campgrounds');
-}))
+// campground CRUD routing start
+app.use('/campgrounds', campgroundsRoute);
+app.use('/campgrounds/:id/reviews', reviewsRoute);
+app.use('/', usersRoute);
 
 app.get('/', (req, res) => {
-    res.render('index')
+    if (req.session.count) {
+        req.session.count += 1;
+    } else {
+        req.session.count = 1;
+    }
+    res.send(`You viewed this page ${req.session.count} times`);
+    // res.render('index')
 })
 // campground CRUD functionality ends here
 
-app.post('/campgrounds/:id/reviews', validateReview, catchAsync(async (req, res) => {
-    const campground = await Campground.findById(req.params.id)
-    const review = new Review(req.body.review)
-    campground.reviews.push(review)
-    await campground.save()
-    await review.save()
-    res.redirect(`/campgrounds/${campground._id}`)
-}))
-
-app.delete('/campgrounds/:id/reviews/:reviewId', catchAsync(async (req, res) => {
-    const { id, reviewId } = req.params;
-    await Campground.findByIdAndUpdate(id, { $pull: { reviews: reviewId } }, {useFindAndModify: false})
-    await Review.findByIdAndDelete(reviewId, {useFindAndModify:false} );
-    res.redirect(`/campgrounds/${id}`)
-}))
 
 app.all('*', (req, res, next) => {
     // console.lod('inside undefined path handler')
