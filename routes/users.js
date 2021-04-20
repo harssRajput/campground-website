@@ -40,8 +40,10 @@ router.post('/login', passport.authenticate('local', { failureFlash: true, failu
 })
 
 router.get('/logout', (req, res) => {
+    const username = req.user.username;
     req.logOut();
-    req.flash('success', 'GoodBye, See You Soon!');
+    req.flash('success', `GoodBye ${username}, See You Soon!`);
+    delete username;
     res.redirect('/campgrounds');
 })
 
