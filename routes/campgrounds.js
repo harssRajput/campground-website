@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const flash = require('connect-flash');
 
+
 const catchAsync = require('../utils/catchAsync');
 const Campground = require('../models/campground');
 const { isLoggedIn, isAuthor, validateCampground } = require('../middleware');

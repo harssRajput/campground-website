@@ -17,7 +17,7 @@ db.once("open", () => {
 // database connected now
 
 
-const seedDB = async () => {
+const seedDB = async() => {
     await Campground.deleteMany();
 
     // sample func give random value from given array
@@ -30,6 +30,13 @@ const seedDB = async () => {
             title: `${sample(places)} ${sample(descriptors)}`,
             author: '607c1a31b4f2211f282eccc3',
             location: `${cities[random1000].city}, ${cities[random1000].state}`,
+            geometry: {
+                type: 'Point',
+                coordinates: [
+                    cities[random1000].longitude,
+                    cities[random1000].latitude
+                ]
+            },
             image: 'https://source.unsplash.com/random/800x600',
             price: random1000,
             description: 'Lorem ipsum dolor sit amet consectetur adipisicing elit. Officia obcaecati odit sapiente optio, iure excepturi! Nihil quisquam fuga rerum placeat eveniet quis, minus suscipit soluta sint corporis accusamus. Culpa, minus!'
