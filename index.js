@@ -63,26 +63,20 @@ passport.deserializeUser(User.deserializeUser());
 
 app.use(flash());
 app.use((req, res, next) => {
-    res.locals.success = req.flash('success');
-    res.locals.error = req.flash('error');
-    res.locals.currentUser = req.user;
-    next();
-})
-// campground CRUD routing start
+        res.locals.success = req.flash('success');
+        res.locals.error = req.flash('error');
+        res.locals.currentUser = req.user;
+        next();
+    })
+    // campground CRUD routing start
 app.use('/campgrounds', campgroundsRoute);
 app.use('/campgrounds/:id/reviews', reviewsRoute);
 app.use('/', usersRoute);
 
 app.get('/', (req, res) => {
-    if (req.session.count) {
-        req.session.count += 1;
-    } else {
-        req.session.count = 1;
-    }
-    res.send(`You viewed this page ${req.session.count} times`);
-    // res.render('index')
-})
-// campground CRUD functionality ends here
+        res.render('home')
+    })
+    // campground CRUD functionality ends here
 
 
 app.all('*', (req, res, next) => {
@@ -100,4 +94,3 @@ app.use((err, req, res, next) => {
 app.listen(3000, () => {
     console.log('serving on port 3000')
 })
-
