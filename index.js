@@ -15,6 +15,8 @@ const campgroundsRoute = require('./routes/campgrounds');
 const reviewsRoute = require('./routes/reviews');
 const usersRoute = require('./routes/users');
 
+const mongoSanitize = require('express-mongo-sanitize');
+
 
 // for connecting mongoose to mongodb
 mongoose.connect('mongodb://localhost:27017/yelpCamp', {
@@ -41,6 +43,9 @@ app.use(express.urlencoded({ extended: true }));
 // for overriding method in HTML Forms
 app.use(methodOverride('_method'));
 app.use(express.static(path.join(__dirname, 'public')));
+app.use(mongoSanitize({
+    replaceWith: '_'
+}))
 
 const sessionConfig = {
     secret: 'ThisIsNotAGoodSecret',
@@ -63,6 +68,7 @@ passport.deserializeUser(User.deserializeUser());
 
 app.use(flash());
 app.use((req, res, next) => {
+        // console.log(req.query)
         res.locals.success = req.flash('success');
         res.locals.error = req.flash('error');
         res.locals.currentUser = req.user;
