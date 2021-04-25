@@ -1,5 +1,5 @@
 const Campground = require('../models/campground');
-require('dotenv').config()
+// require('dotenv').config()
 const mbxGeocoding = require('@mapbox/mapbox-sdk/services/geocoding')
 const mapboxToken = process.env.MAPBOX_TOKEN;
 const geoCoder = mbxGeocoding({ accessToken: mapboxToken })
