@@ -25,7 +25,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const session = require('express-session');
 const MongoDBStore = require('connect-mongo');
 
-const dbUrl = 'mongodb://localhost:27017/yelpCamp';
+const dbUrl = process.env.DB_URL || 'mongodb://localhost:27017/yelpCamp';
 
 // for connecting mongoose to mongodb
 mongoose.connect(dbUrl, {
@@ -103,9 +103,10 @@ app.use(
     })
 );
 
+const secret = process.env.SECRET || 'ThisIsNotAGoodSecret';
 const store = MongoDBStore.create({
     mongoUrl: dbUrl,
-    secret: 'ThisIsNotAGoodSecret',
+    secret,
     touchAfter: 24 * 60 * 60
 });
 
@@ -117,7 +118,7 @@ store.on("error", function(e) {
 const sessionConfig = {
     store,
     name: 'session',
-    secret: 'ThisIsNotAGoodSecret',
+    secret,
     resave: false,
     saveUninitialized: false,
     cookie: {
