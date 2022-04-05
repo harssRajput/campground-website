@@ -1,4 +1,4 @@
-# yelpCamp
+# Full stack campground website
 
 It's my first full stack project as a part of full sstack web development bootcamp course.
 it's a campground website where users can view campgrounds, review them, create one by logging in.
